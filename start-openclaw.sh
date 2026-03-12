@@ -119,14 +119,15 @@ fi
 echo "--- [INIT] 启动定时备份 ---"
 (while true; do sleep 10800; python3 /usr/local/bin/sync.py backup; done) &
 
-echo "--- [INIT] 启动 OpenClaw Gateway ---"
-
-openclaw doctor --fix
-
+# 先安装钉钉插件，再运行 doctor
 if [ "${DINGTALK_ENABLED:-false}" = "true" ]; then
     echo "--- [INIT] 安装钉钉插件 ---"
     openclaw plugins install @soimy/dingtalk || echo "--- [WARN] 钉钉插件安装失败，可能已安装 ---"
     sleep 2
 fi
+
+echo "--- [INIT] 启动 OpenClaw Gateway ---"
+
+openclaw doctor --fix
 
 exec node openclaw.mjs gateway --allow-unconfigured

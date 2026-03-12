@@ -35,7 +35,7 @@
 |--------|------|--------|
 | `HF_TOKEN` | HuggingFace Token | `hf_xxxxxxxxxxxx` |
 | `HF_DATASET` | 备份数据集 ID | `your-username/your-dataset` |
-| `HF_SPACE_DOMAIN` | HuggingFace Space 名称（不带 `https://` 或 `.hf.space`） | `your-space-name` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称（格式：用户名-项目名） | `ceshi001awdhg-ceshi-claw` |
 | `OPENAI_API_KEY` | OpenAI API 密钥 | `sk-xxxxxxxx` |
 | `OPENAI_API_BASE` | API 地址（去掉 /v1） | `https://api.siliconflow.cn` |
 | `MODEL` | 模型 ID | `moonshotai/kimi-k2-instruct-0905` |
@@ -220,7 +220,7 @@
      -p 7860:7860 \
      -e HF_TOKEN=hf_xxxx \
      -e HF_DATASET=your/dataset \
-     -e HF_SPACE_DOMAIN=your-space \
+     -e HF_SPACE_DOMAIN=ceshi001awdhg-ceshi-claw \
      -e OPENAI_API_KEY=sk-xxx \
      -e OPENAI_API_BASE=https://api.example.com/v1 \
      -e MODEL=model-name \
