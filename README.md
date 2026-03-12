@@ -35,23 +35,26 @@
 |--------|------|--------|
 | `HF_TOKEN` | HuggingFace Token | `hf_xxxxxxxxxxxx` |
 | `HF_DATASET` | 备份数据集 ID | `your-username/your-dataset` |
-| `HF_SPACE_DOMAIN` | HuggingFace Space 名称（格式：用户名-项目名） | `ceshi001awdhg-ceshi-claw` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称 | `ceshi001awdhg-ceshi-claw` |
 | `OPENAI_API_KEY` | 主 API Key | `sk-xxx` |
-| `OPENAI_API_BASE` | 主 API 地址 | `https://api.siliconflow.cn` |
+| `OPENAI_API_BASE` | 主 API 地址 | `https://api.siliconflow.cn/v1` |
 | `MODEL` | 主模型 | `nvidia/nemotron-3-super-120b-a12b` |
-| `FALLBACK_MODEL` | 备用模型（逗号分隔，可选） | `moonshotai/kimi-k2.5` |
-| `FALLBACK_OPENAI_API_KEY` | 备用模型 API Key（可选） | `sk-xxx` |
-| `FALLBACK_OPENAI_API_BASE` | 备用模型 API 地址（可选） | `https://api2.com/v1` |
-| `VISION_MODEL` | 视觉模型（自动识别图片，可选） | `qwen/qwen3.5-397b-a17b` |
-| `VISION_API_KEY` | 视觉模型 API Key（可选） | `sk-xxx` |
-| `VISION_API_BASE` | 视觉模型 API 地址（可选） | `https://api3.com/v1` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
-| 变量名 | 说明 |
-|--------|------|
-| `FEISHU_ENABLED` | `true` 或 `false` |
-| 变量名 | 说明 |
-|--------|------|
+
+#### 可选变量
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `FALLBACK_MODEL` | 备用模型（逗号分隔） | `moonshotai/kimi-k2.5,qwen/qwen3.5-397b-a17b` |
+| `VISION_MODEL` | 视觉模型 | `moonshotai/Kimi-K2.5` |
+| `VISION_API_BASE` | 视觉模型 API 地址 | `https://api-inference.modelscope.cn/v1` |
+| `VISION_API_KEY` | 视觉模型 API Key | `ms-xxx` |
+| `FEISHU_ENABLED` | 启用飞书频道 | `true` 或 `false` |
+| `FEISHU_APP_ID` | 飞书应用 ID | `cli_xxxxxxxxxxxxxxxx` |
+| `FEISHU_APP_SECRET` | 飞书应用密钥 | `xxxxxxxxxxxxxxxx` |
+
 ---
+
 ## 飞书配置
 
 ### 1. 创建飞书应用
@@ -127,12 +130,6 @@
 2. 点击 **「创建新版本」**
 3. 填写版本号（如 `1.0.0`）和更新说明
 4. 点击 **「提交发布」**
-
-### 7. 配置环境变量
-
-| 变量名 | 说明 | 示例值 |
-|--------|------|--------|
----
 
 ---
 
@@ -228,24 +225,24 @@ python3 /usr/local/bin/sync.py restore
 
 ### ❌ Origin not allowed 错误
 
-**问题**：访问时提示 `origin not allowed (open the Control UI from the gateway host or allow it in gateway.controlUi.allowedOrigins)`
+**问题**：访问时提示 `origin not allowed`
 
 **原因**：`HF_SPACE_DOMAIN` 环境变量配置错误
 
-**正确配置**：
-| 错误写法 | 正确写法 |
-|----------|----------|
-| `https://ceshi001awdhg-ceshi-claw.hf.space/` | `ceshi001awdhg-ceshi-claw` |
-| `ceshi001awdhg-ceshi-claw.hf.space` | `ceshi001awdhg-ceshi-claw` |
-| `/ceshi001awdhg-ceshi-claw` | `ceshi001awdhg-ceshi-claw` |
-
-**注意**：`HF_SPACE_DOMAIN` 只需要 Space 名称，**不要包含** `https://`、`/` 或 `.hf.space`。
+**正确配置**：只填写 Space 名称，不要包含 `https://`、`/` 或 `.hf.space`
 
 ### 飞书无法连接
 
 - 检查 App ID/Secret 是否正确
 - 确认事件订阅配置
-- 检查网络连通性
+
+### ❌ 模型不支持图像错误
+
+**问题**：日志显示 `Model does not support images`
+
+**原因**：视觉模型配置缺少 `input` 字段声明
+
+**解决方案**：确保 `VISION_MODEL` 和 `VISION_API_BASE` 正确配置
 
 ---
 
