@@ -46,6 +46,8 @@
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
 | `FALLBACK_MODEL` | 备用模型（逗号分隔） | `moonshotai/kimi-k2.5,qwen/qwen3.5-397b-a17b` |
+| `FALLBACK_OPENAI_API_KEY` | 备用模型 API Key | `sk-xxx` |
+| `FALLBACK_OPENAI_API_BASE` | 备用模型 API 地址 | `https://api2.com/v1` |
 | `VISION_MODEL` | 视觉模型 | `moonshotai/Kimi-K2.5` |
 | `VISION_API_BASE` | 视觉模型 API 地址 | `https://api-inference.modelscope.cn/v1` |
 | `VISION_API_KEY` | 视觉模型 API Key | `ms-xxx` |
