@@ -36,20 +36,22 @@
 | `HF_TOKEN` | HuggingFace Token | `hf_xxxxxxxxxxxx` |
 | `HF_DATASET` | 备份数据集 ID | `your-username/your-dataset` |
 | `HF_SPACE_DOMAIN` | HuggingFace Space 名称（格式：用户名-项目名） | `ceshi001awdhg-ceshi-claw` |
-| `OPENAI_API_KEY` | OpenAI API 密钥 | `sk-xxxxxxxx` |
-| `OPENAI_API_BASE` | API 地址（去掉 /v1） | `https://api.siliconflow.cn` |
-| `MODEL` | 模型 ID | `moonshotai/kimi-k2-instruct-0905` |
+| `OPENAI_API_KEY` | 主 API Key | `sk-xxx` |
+| `OPENAI_API_BASE` | 主 API 地址 | `https://api.siliconflow.cn` |
+| `MODEL` | 主模型 | `nvidia/nemotron-3-super-120b-a12b` |
+| `FALLBACK_MODEL` | 备用模型（逗号分隔，可选） | `moonshotai/kimi-k2.5` |
+| `FALLBACK_OPENAI_API_KEY` | 备用模型 API Key（可选） | `sk-xxx` |
+| `FALLBACK_OPENAI_API_BASE` | 备用模型 API 地址（可选） | `https://api2.com/v1` |
+| `VISION_MODEL` | 视觉模型（自动识别图片，可选） | `qwen/qwen3.5-397b-a17b` |
+| `VISION_API_KEY` | 视觉模型 API Key（可选） | `sk-xxx` |
+| `VISION_API_BASE` | 视觉模型 API 地址（可选） | `https://api3.com/v1` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
-#### 飞书（可选）
 | 变量名 | 说明 |
 |--------|------|
 | `FEISHU_ENABLED` | `true` 或 `false` |
-| `FEISHU_APP_ID` | 飞书应用 App ID |
-| `FEISHU_APP_SECRET` | 飞书应用 App Secret |
 | 变量名 | 说明 |
 |--------|------|
 ---
-
 ## 飞书配置
 
 ### 1. 创建飞书应用
@@ -130,11 +132,7 @@
 
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
-| `FEISHU_ENABLED` | 启用飞书通道 | `true` |
-| `FEISHU_APP_ID` | 飞书 App ID | `cli_xxxxxxxxxxxxxxxx` |
-| `FEISHU_APP_SECRET` | 飞书 App Secret | `xxxxxxxxxxxxxxxx` |
 ---
-
 
 ---
 
