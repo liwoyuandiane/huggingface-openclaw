@@ -74,7 +74,7 @@ if [ "$NEED_INITIAL_UPLOAD" = "true" ]; then
 fi
 
 echo "--- [INIT] 启动定时备份 ---"
-(while true; do sleep 10800; python3 /usr/local/bin/sync.py backup; done) &
+(while true; do sleep 1200; python3 /usr/local/bin/sync.py backup; done) &
 
 echo "--- [INIT] 启动 OpenClaw Gateway ---"
 

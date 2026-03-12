@@ -1,6 +1,6 @@
 # OpenClaw Gateway Dockerfile for HuggingFace Deployment
 # 基于官方镜像 ghcr.io/openclaw/openclaw:latest
-# 支持飞书、钉钉、HuggingFace 数据同步
+# 支持飞书、HuggingFace 数据同步
 
 FROM ghcr.io/openclaw/openclaw:latest
 

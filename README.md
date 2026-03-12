@@ -41,7 +41,6 @@
 | `MODEL` | 模型 ID | `moonshotai/kimi-k2-instruct-0905` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
 #### 飞书（可选）
-
 | 变量名 | 说明 |
 |--------|------|
 | `FEISHU_ENABLED` | `true` 或 `false` |
@@ -49,7 +48,6 @@
 | `FEISHU_APP_SECRET` | 飞书应用 App Secret |
 | 变量名 | 说明 |
 |--------|------|
-| `DINGTALK_ENABLED` | `true` 或 `false` |
 ---
 
 ## 飞书配置
