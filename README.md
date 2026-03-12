@@ -35,7 +35,7 @@
 |--------|------|--------|
 | `HF_TOKEN` | HuggingFace Token | `hf_xxxxxxxxxxxx` |
 | `HF_DATASET` | 备份数据集 ID | `your-username/your-dataset` |
-| `HF_SPACE_DOMAIN` | HuggingFace Space 名称（不带 .hf.space） | `your-space-name` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称（不带 `https://` 或 `.hf.space`） | `your-space-name` |
 | `OPENAI_API_KEY` | OpenAI API 密钥 | `sk-xxxxxxxx` |
 | `OPENAI_API_BASE` | API 地址（去掉 /v1） | `https://api.siliconflow.cn` |
 | `MODEL` | 模型 ID | `moonshotai/kimi-k2-instruct-0905` |
@@ -56,8 +56,6 @@
 | `DINGTALK_ENABLED` | `true` 或 `false` |
 | `DINGTALK_CLIENT_ID` | 钉钉 AppKey |
 | `DINGTALK_CLIENT_SECRET` | 钉钉 AppSecret |
-| `DINGTALK_ROBOT_CODE` | 钉钉机器人 Code |
-| `DINGTALK_CORP_ID` | 钉钉企业 ID |
 
 ---
 
@@ -66,55 +64,138 @@
 ### 1. 创建飞书应用
 
 1. 访问 [飞书开放平台](https://open.feishu.cn/)
-2. 创建企业自建应用
-3. 获取 `App ID` 和 `App Secret`
+2. 点击 **「创建企业应用」** 按钮
+3. 填写应用信息：
+   - 应用名称：OpenClaw AI 助手
+   - 应用描述：基于 OpenClaw 的 AI 助手
+   - 上传应用图标（建议 1024x1024）
 
-### 2. 配置事件订阅
+### 2. 获取应用凭证
 
-1. 在应用设置中启用事件订阅
-2. 订阅以下事件：
-   - `im.message.receive_v1` (接收消息)
-   - `im.chat.member.added_v1` (群成员添加)
-3. 模式选择：**Stream 模式**
+应用创建成功后，在左侧菜单点击 **「凭证与基础信息」**：
 
-### 3. 配置机器人权限
+| 字段 | 说明 | 示例值 |
+|------|------|--------|
+| `App ID` | 应用唯一标识 | `cli_xxxxxxxxxxxxxxxx` |
+| `App Secret` | 应用密钥（只显示一次，立即保存） | `xxxxxxxxxxxxxxxx` |
 
-1. 添加机器人能力
-2. 获取机器人 Token（用于代码验证）
+> ⚠️ **重要提示**：
+> - App Secret 只显示一次，请立即复制保存到安全的地方
+> - 不要将 App Secret 泄露给他人
+> - 如果泄露，需要在飞书开放平台重置
 
-### 4. 配置环境变量
+### 3. 配置权限
 
+1. 点击左侧菜单 **「权限」**
+2. 点击 **「批量导入」**，粘贴以下 JSON：
+
+```json
+{
+  "scopes": {
+    "tenant": [
+      "im:message",
+      "im:message:send_as_bot",
+      "im:message:readonly",
+      "im:resource",
+      "im:chat.members:bot_access"
+    ]
+  }
+}
 ```
-FEISHU_ENABLED=true
-FEISHU_APP_ID=cli_xxxxxxxxxxxx
-FEISHU_APP_SECRET=xxxxxxxxxxxx
-```
+
+3. 点击 **「批量添加」**
+
+**关键权限说明**：
+- `im:message` - 接收消息
+- `im:message:send_as_bot` - 以机器人身份发送消息
+- `im:resource` - 上传下载文件
+
+### 4. 开启机器人能力
+
+1. 点击左侧菜单 **「应用能力」** → **「机器人」**
+2. 点击 **「开启机器人能力」** 开关
+3. 设置机器人名称（用户在飞书中看到的名字）
+
+### 5. 配置事件订阅
+
+1. 点击左侧菜单 **「事件订阅」**
+2. 在 **「接收消息」** 部分，选择 **「使用长连接接收事件」**（WebSocket 方式）
+3. 点击 **「添加事件」**，搜索并添加以下事件：
+
+| 事件名称 | 说明 | 是否必选 |
+|----------|------|----------|
+| `im.message.receive_v1` | 接收消息 | ✅ 必选 |
+| `im.chat.access_event.bot_p2p_chat` | 用户开始私聊机器人 | 推荐 |
+| `im.chat.access_event.bot_added_to_chat` | 机器人被添加到群聊 | 推荐 |
+
+### 6. 发布应用
+
+1. 点击左侧菜单 **「版本管理与发布」**
+2. 点击 **「创建新版本」**
+3. 填写版本号（如 `1.0.0`）和更新说明
+4. 点击 **「提交发布」**
+
+### 7. 配置环境变量
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `FEISHU_ENABLED` | 启用飞书通道 | `true` |
+| `FEISHU_APP_ID` | 飞书 App ID | `cli_xxxxxxxxxxxxxxxx` |
+| `FEISHU_APP_SECRET` | 飞书 App Secret | `xxxxxxxxxxxxxxxx` |
 
 ---
 
 ## 钉钉配置
 
-### 1. 创建钉钉应用
+### 1. 创建企业内部应用
 
 1. 访问 [钉钉开放平台](https://open.dingtalk.com/)
-2. 创建**企业内部应用**
-3. 获取 `AppKey` 和 `AppSecret`
+2. 登录后进入 **「应用开发」** → **「企业内部应用」**
+3. 点击 **「创建应用」**，填写应用信息
 
-### 2. 配置机器人
+### 2. 获取应用凭证
 
-1. 添加机器人能力
-2. 获取机器人 Code
-3. 记录企业 ID（CorpID）
+在应用详情页面，点击 **「凭证与基础信息」**：
 
-### 3. 配置环境变量
+| 字段 | 说明 | 示例值 |
+|------|------|--------|
+| `AppKey` | 应用唯一标识（原称 Client ID） | `dingxxxxxxxx` |
+| `AppSecret` | 应用密钥（原称 Client Secret） | `xxxxxxxxxxxxxxxx` |
+| `AgentId` | 应用代理 ID（旧称，现为 MiniAppId） | `123456789` |
 
-```
-DINGTALK_ENABLED=true
-DINGTALK_CLIENT_ID=dingxxxxxxxx
-DINGTALK_CLIENT_SECRET=xxxxxxxxxxxx
-DINGTALK_ROBOT_CODE=xxxxxxxx
-DINGTALK_CORP_ID=xxxxxxxx
-```
+> ⚠️ **字段说明**（容易混淆）：
+> - **AppKey** = **Client ID**（原 AppKey 和 SuiteKey）
+> - **AppSecret** = **Client Secret**（原 AppSecret 和 SuiteSecret）
+> - **AgentId** = 企业内部应用的代理 ID（部分文档仍使用旧称）
+
+### 3. 配置机器人
+
+1. 在应用详情页面，点击 **「机器人」** 或 **「应用能力」**
+2. 开启机器人功能
+
+### 4. 配置权限
+
+1. 点击左侧菜单 **「权限管理」**
+2. 添加以下权限：
+   - `im:chat:write` - 发送消息
+   - `im:chat:read` - 读取消息
+   - `robot` - 机器人能力
+
+### 5. 配置环境变量
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `DINGTALK_ENABLED` | 启用钉钉通道 | `true` |
+| `DINGTALK_CLIENT_ID` | 钉钉 AppKey | `dingxxxxxxxx` |
+| `DINGTALK_CLIENT_SECRET` | 钉钉 AppSecret | `xxxxxxxxxxxxxxxx` |
+
+### 6. 常见问题
+
+**Q: AppKey 和 AppSecret 有什么区别？**
+- `AppKey` 是应用的唯一标识（类似用户名）
+- `AppSecret` 是应用的安全密钥（类似密码，用于验证身份）
+
+---
 
 ---
 
@@ -207,6 +288,21 @@ python3 /usr/local/bin/sync.py restore
 
 - 检查环境变量是否正确
 - 查看 Space 日志
+
+### ❌ Origin not allowed 错误
+
+**问题**：访问时提示 `origin not allowed (open the Control UI from the gateway host or allow it in gateway.controlUi.allowedOrigins)`
+
+**原因**：`HF_SPACE_DOMAIN` 环境变量配置错误
+
+**正确配置**：
+| 错误写法 | 正确写法 |
+|----------|----------|
+| `https://ceshi001awdhg-ceshi-claw.hf.space/` | `ceshi001awdhg-ceshi-claw` |
+| `ceshi001awdhg-ceshi-claw.hf.space` | `ceshi001awdhg-ceshi-claw` |
+| `/ceshi001awdhg-ceshi-claw` | `ceshi001awdhg-ceshi-claw` |
+
+**注意**：`HF_SPACE_DOMAIN` 只需要 Space 名称，**不要包含** `https://`、`/` 或 `.hf.space`。
 
 ### 飞书/钉钉无法连接
 
