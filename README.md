@@ -1,6 +1,6 @@
 # OpenClaw HuggingFace 部署指南
 
-> OpenClaw AI Gateway 官方镜像部署到 HuggingFace Spaces，支持飞书、钉钉和数据同步。
+> OpenClaw AI Gateway 官方镜像部署到 HuggingFace Spaces，支持飞书和数据同步。
 
 ---
 
@@ -40,7 +40,6 @@
 | `OPENAI_API_BASE` | API 地址（去掉 /v1） | `https://api.siliconflow.cn` |
 | `MODEL` | 模型 ID | `moonshotai/kimi-k2-instruct-0905` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
-
 #### 飞书（可选）
 
 | 变量名 | 说明 |
@@ -48,15 +47,9 @@
 | `FEISHU_ENABLED` | `true` 或 `false` |
 | `FEISHU_APP_ID` | 飞书应用 App ID |
 | `FEISHU_APP_SECRET` | 飞书应用 App Secret |
-
-#### 钉钉（可选）
-
 | 变量名 | 说明 |
 |--------|------|
 | `DINGTALK_ENABLED` | `true` 或 `false` |
-| `DINGTALK_CLIENT_ID` | 钉钉 AppKey |
-| `DINGTALK_CLIENT_SECRET` | 钉钉 AppSecret |
-
 ---
 
 ## 飞书配置
@@ -142,60 +135,8 @@
 | `FEISHU_ENABLED` | 启用飞书通道 | `true` |
 | `FEISHU_APP_ID` | 飞书 App ID | `cli_xxxxxxxxxxxxxxxx` |
 | `FEISHU_APP_SECRET` | 飞书 App Secret | `xxxxxxxxxxxxxxxx` |
-
 ---
 
-## 钉钉配置
-
-### 1. 创建企业内部应用
-
-1. 访问 [钉钉开放平台](https://open.dingtalk.com/)
-2. 登录后进入 **「应用开发」** → **「企业内部应用」**
-3. 点击 **「创建应用」**，填写应用信息
-
-### 2. 获取应用凭证
-
-在应用详情页面，点击 **「凭证与基础信息」**：
-
-| 字段 | 说明 | 示例值 |
-|------|------|--------|
-| `AppKey` | 应用唯一标识（原称 Client ID） | `dingxxxxxxxx` |
-| `AppSecret` | 应用密钥（原称 Client Secret） | `xxxxxxxxxxxxxxxx` |
-| `AgentId` | 应用代理 ID（旧称，现为 MiniAppId） | `123456789` |
-
-> ⚠️ **字段说明**（容易混淆）：
-> - **AppKey** = **Client ID**（原 AppKey 和 SuiteKey）
-> - **AppSecret** = **Client Secret**（原 AppSecret 和 SuiteSecret）
-> - **AgentId** = 企业内部应用的代理 ID（部分文档仍使用旧称）
-
-### 3. 配置机器人
-
-1. 在应用详情页面，点击 **「机器人」** 或 **「应用能力」**
-2. 开启机器人功能
-
-### 4. 配置权限
-
-1. 点击左侧菜单 **「权限管理」**
-2. 添加以下权限：
-   - `im:chat:write` - 发送消息
-   - `im:chat:read` - 读取消息
-   - `robot` - 机器人能力
-
-### 5. 配置环境变量
-
-| 变量名 | 说明 | 示例值 |
-|--------|------|--------|
-| `DINGTALK_ENABLED` | 启用钉钉通道 | `true` |
-| `DINGTALK_CLIENT_ID` | 钉钉 AppKey | `dingxxxxxxxx` |
-| `DINGTALK_CLIENT_SECRET` | 钉钉 AppSecret | `xxxxxxxxxxxxxxxx` |
-
-### 6. 常见问题
-
-**Q: AppKey 和 AppSecret 有什么区别？**
-- `AppKey` 是应用的唯一标识（类似用户名）
-- `AppSecret` 是应用的安全密钥（类似密码，用于验证身份）
-
----
 
 ---
 
@@ -244,9 +185,9 @@
 
 ---
 
-## 飞书/钉钉使用
+## 飞书使用
 
-1. 在飞书/钉钉中搜索机器人
+1. 在飞书中搜索机器人
 2. 发送消息开始对话
 3. 首次使用需要配对（pairing）
 
@@ -304,7 +245,7 @@ python3 /usr/local/bin/sync.py restore
 
 **注意**：`HF_SPACE_DOMAIN` 只需要 Space 名称，**不要包含** `https://`、`/` 或 `.hf.space`。
 
-### 飞书/钉钉无法连接
+### 飞书无法连接
 
 - 检查 App ID/Secret 是否正确
 - 确认事件订阅配置
@@ -316,4 +257,3 @@ python3 /usr/local/bin/sync.py restore
 
 - [OpenClaw 官方文档](https://docs.openclaw.ai/)
 - [飞书开放平台](https://open.feishu.cn/)
-- [钉钉开放平台](https://open.dingtalk.com/)

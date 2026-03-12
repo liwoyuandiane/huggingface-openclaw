@@ -29,49 +29,7 @@ if [ -z "$HF_SPACE_DOMAIN" ]; then
     exit 1
 fi
 
-if [ "${DINGTALK_ENABLED:-false}" = "true" ]; then
-    cat > /root/.openclaw/openclaw.json <<EOF
-{
-  "models": {
-    "providers": {
-      "siliconflow": {
-        "baseUrl": "$CLEAN_BASE",
-        "apiKey": "$OPENAI_API_KEY",
-        "api": "openai-completions",
-        "models": [{ "id": "$MODEL", "name": "DeepSeek", "contextWindow": 128000 }]
-      }
-    }
-  },
-  "agents": { "defaults": { "model": { "primary": "siliconflow/$MODEL" } } },
-  "gateway": {
-    "mode": "local",
-    "bind": "lan",
-    "port": ${PORT:-7860},
-    "trustedProxies": ["*"],
-    "auth": { "mode": "token", "token": "$OPENCLAW_GATEWAY_PASSWORD" },
-    "controlUi": { 
-      "allowInsecureAuth": true,
-      "dangerouslyDisableDeviceAuth": true,
-      "allowedOrigins": ["https://${HF_SPACE_DOMAIN}.hf.space", "https://*.hf.space", "https://*.huggingface.co", "http://localhost:*", "http://127.0.0.1:*"]
-    }
-  },
-  "channels": {
-    "feishu": {
-      "enabled": ${FEISHU_ENABLED:-false},
-      "appId": "$FEISHU_APP_ID",
-      "appSecret": "$FEISHU_APP_SECRET",
-      "dmPolicy": "open"
-    },
-    "dingtalk": {
-      "enabled": true,
-      "clientId": "$DINGTALK_CLIENT_ID",
-      "clientSecret": "$DINGTALK_CLIENT_SECRET"
-    }
-  }
-}
-EOF
-else
-    cat > /root/.openclaw/openclaw.json <<EOF
+cat > /root/.openclaw/openclaw.json <<EOF
 {
   "models": {
     "providers": {
@@ -106,7 +64,6 @@ else
   }
 }
 EOF
-fi
 
 echo "--- [INIT] 配置完成 ---"
 cat /root/.openclaw/openclaw.json | head -20
@@ -118,13 +75,6 @@ fi
 
 echo "--- [INIT] 启动定时备份 ---"
 (while true; do sleep 10800; python3 /usr/local/bin/sync.py backup; done) &
-
-# 先安装钉钉插件，再运行 doctor
-if [ "${DINGTALK_ENABLED:-false}" = "true" ]; then
-    echo "--- [INIT] 安装钉钉插件 ---"
-    openclaw plugins install @soimy/dingtalk || echo "--- [WARN] 钉钉插件安装失败，可能已安装 ---"
-    sleep 2
-fi
 
 echo "--- [INIT] 启动 OpenClaw Gateway ---"
 
