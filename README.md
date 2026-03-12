@@ -195,7 +195,7 @@
 
 ### 自动备份
 
-每 3 小时自动备份到 HuggingFace Dataset。
+每 20 分钟自动备份到 HuggingFace Dataset。
 
 ### 手动恢复
 
