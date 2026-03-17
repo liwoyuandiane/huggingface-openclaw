@@ -78,12 +78,17 @@ trap cleanup SIGTERM SIGINT SIGQUIT
 # ============================================================
 backup_daemon() {
     local count=0
+    # 第一次备份等待 10 分钟，让 Gateway 完全启动并稳定运行
+    local first_delay=600
+    echo "--- [BACKUP] 首次备份将在 ${first_delay} 秒(10分钟)后执行 ---" | tee -a "$LOG_FILE"
+    sleep $first_delay
+    
     while true; do
-        sleep $SYNC_INTERVAL
         count=$((count + 1))
         echo "--- [BACKUP] 第 $count 次定时备份开始 ($(date '+%Y-%m-%d %H:%M:%S')) ---" | tee -a "$LOG_FILE"
         python3 /usr/local/bin/sync.py backup 2>&1 | tee -a "$LOG_FILE"
         echo "--- [BACKUP] 第 $count 次定时备份完成 ---" | tee -a "$LOG_FILE"
+        sleep $SYNC_INTERVAL
     done
 }
 
@@ -152,13 +157,15 @@ if [ -n "$MODELSCOPE_API_KEY" ]; then
 else
     # 使用传统 OpenAI 兼容 API 配置
     echo "--- [INIT] 使用自定义 API 作为主模型 ---"
-    PRIMARY_API_BASE=$(echo "${OPENAI_API_BASE:-}" | sed "s|/chat/completions||g" | sed "s|/v1/|/v1|g" | sed "s|/v1$||g")
+    # 只去掉 /chat/completions 后缀，保留完整的 /v1 路径
+    PRIMARY_API_BASE=$(echo "${OPENAI_API_BASE:-}" | sed 's|/chat/completions$||')
     PRIMARY_API_KEY="$OPENAI_API_KEY"
     PRIMARY_MODEL="${MODEL:-nvidia/nemotron-3-super-120b-a12b}"
     PRIMARY_PROVIDER=$(echo "$PRIMARY_API_BASE" | sed 's|^https://||' | sed 's|/.*$||')
-    echo "--- [INIT] 主模型: $PRIMARY_MODEL (Provider: $PRIMARY_PROVIDER)"
+    echo "--- [INIT] 主模型: $PRIMARY_MODEL (Provider: $PRIMARY_PROVIDER, API: $PRIMARY_API_BASE)"
     
-    FALLBACK_API_BASE=$(echo "${FALLBACK_OPENAI_API_BASE:-$OPENAI_API_BASE}" | sed "s|/chat/completions||g" | sed "s|/v1/|/v1|g" | sed "s|/v1$||g")
+    # 只去掉 /chat/completions 后缀，保留完整的 /v1 路径
+    FALLBACK_API_BASE=$(echo "${FALLBACK_OPENAI_API_BASE:-$OPENAI_API_BASE}" | sed 's|/chat/completions$||')
     FALLBACK_API_KEY="${FALLBACK_OPENAI_API_KEY:-$OPENAI_API_KEY}"
 fi
 if [ "$FALLBACK_API_BASE" != "$PRIMARY_API_BASE" ] || [ "$FALLBACK_API_KEY" != "$PRIMARY_API_KEY" ]; then
@@ -302,6 +309,9 @@ if [ -n "$VISION_MODEL" ] && [ "$VISION_USE_SEPARATE" = true ]; then
     AGENTS_CONFIG="$AGENTS_CONFIG }"
 fi
 
+# 关闭 defaults 对象
+AGENTS_CONFIG="$AGENTS_CONFIG }"
+
 # 构建 channels 配置
 CHANNELS_CONFIG="\"feishu\": {
       \"enabled\": ${FEISHU_ENABLED:-false},
@@ -354,10 +364,7 @@ EOF
 echo "--- [INIT] 配置完成 ---"
 cat /root/.openclaw/openclaw.json | head -30
 
-if [ "$NEED_INITIAL_UPLOAD" = "true" ]; then
-    echo "--- [INIT] 执行初始备份到 HuggingFace ---"
-    python3 /usr/local/bin/sync.py backup
-fi
+# 注意：初始全量备份将在 backup_daemon 启动 20 分钟后自动执行
 
 # ==================== 启动定时备份（带 PID 管理）====================
 echo "--- [INIT] 启动定时备份守护进程 (间隔: ${SYNC_INTERVAL}秒) ---"
