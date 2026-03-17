@@ -357,11 +357,25 @@ cat > /root/.openclaw/openclaw.json <<EOF
   },
   "channels": {
     $CHANNELS_CONFIG
+  },
+  "commands": {
+    "bash": true,
+    "config": true
+  },
+  "tools": {
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "webchat": ["*"],
+        "feishu": ["*"],
+        "dingtalk": ["*"]
+      }
+    }
   }
 }
 EOF
 
-echo "--- [INIT] 配置完成 ---"
+echo "--- [INIT] 配置完成 (已启用 bash、config 命令和 elevated 工具) ---"
 cat /root/.openclaw/openclaw.json | head -30
 
 # 注意：初始全量备份将在 backup_daemon 启动 20 分钟后自动执行
@@ -407,6 +421,20 @@ cat > /root/.openclaw/openclaw.json <<EOF
   },
   "channels": {
     $CHANNELS_CONFIG
+  },
+  "commands": {
+    "bash": true,
+    "config": true
+  },
+  "tools": {
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "webchat": ["*"],
+        "feishu": ["*"],
+        "dingtalk": ["*"]
+      }
+    }
   }
 }
 EOF

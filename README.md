@@ -271,6 +271,70 @@ python3 /usr/local/bin/sync.py cleanup
 
 ---
 
+## Shell 命令与配置
+
+### 启用 Bash 命令执行
+
+本项目已默认启用以下配置，允许通过聊天界面执行 Shell 命令：
+
+```json
+{
+  "commands": {
+    "bash": true,
+    "config": true
+  },
+  "tools": {
+    "elevated": {
+      "enabled": true,
+      "allowFrom": {
+        "webchat": ["*"],
+        "feishu": ["*"],
+        "dingtalk": ["*"]
+      }
+    }
+  }
+}
+```
+
+### 使用方法
+
+**执行 Shell 命令**：
+```
+!pwd
+!ls -la
+!python3 /usr/local/bin/sync.py backup
+```
+
+**查看/修改配置**：
+```
+/config show
+/config get gateway.auth
+```
+
+### 配置说明
+
+| 配置项 | 说明 |
+|--------|------|
+| `commands.bash` | 启用 `! <cmd>` 执行主机 Shell 命令 |
+| `commands.config` | 启用 `/config` 读写配置文件 |
+| `tools.elevated.enabled` | 启用特权模式 |
+| `tools.elevated.allowFrom` | 允许使用的来源（`["*"]` 表示允许所有） |
+
+### 安全提示
+
+⚠️ `allowFrom: ["*"]` 允许所有用户执行命令，在生产环境中建议限制为特定用户 ID：
+
+```json
+"tools.elevated": {
+  "allowFrom": {
+    "webchat": ["session:demo"],
+    "feishu": ["ou_xxxxxxxx"]
+  }
+}
+```
+
+---
+
 ## 故障排查
 
 ### 构建失败
