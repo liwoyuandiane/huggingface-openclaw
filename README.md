@@ -1,6 +1,37 @@
 # OpenClaw HuggingFace 部署指南
 
-> OpenClaw AI Gateway 官方镜像部署到 HuggingFace Spaces，支持飞书和数据同步。
+> OpenClaw AI Gateway 官方镜像部署到 HuggingFace Spaces，支持飞书、钉钉、ModelScope 免费 API 和数据自动同步。
+
+---
+
+## 快速部署
+
+### 方案一：使用 ModelScope（推荐 - 免费）
+
+ModelScope（魔搭）每日提供 **2000 次免费 API 调用**，无需付费即可使用强力模型：
+
+```bash
+HF_TOKEN=hf_xxxx                    # HuggingFace Token（需 Write 权限）
+AUTO_CREATE_DATASET=true            # 自动创建 Dataset
+HF_SPACE_DOMAIN=my-space            # Space 名称
+MODELSCOPE_API_KEY=xxx              # ModelScope Token（在 modelscope.cn 获取）
+MODELSCOPE_MODEL=moonshotai/Kimi-K2.5  # 模型（默认 Kimi-K2.5，可更改）
+OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
+```
+
+### 方案二：使用自定义 API
+
+如果需要使用其他 API 服务商（如 OpenAI、SiliconFlow）：
+
+```bash
+HF_TOKEN=hf_xxxx                    # HuggingFace Token（需 Write 权限）
+AUTO_CREATE_DATASET=true            # 自动创建 Dataset
+HF_SPACE_DOMAIN=my-space            # Space 名称
+OPENAI_API_KEY=sk-xxx              # API Key
+OPENAI_API_BASE=https://api.xxx/v1  # API 地址
+MODEL=model-name                    # 模型名称
+OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
+```
 
 ---
 
@@ -12,48 +43,85 @@
 2. 创建新的 Token（选择 "Write" 权限）
 3. 保存 Token，格式如：`hf_xxxxxxxxxxxx`
 
-### 2. 创建 HuggingFace Dataset
-
-1. 访问 [New Dataset](https://huggingface.co/new-dataset)
-2. 创建 Dataset（用于存储 OpenClaw 数据备份）
-3. 记录 Dataset ID，格式如：`your-username/your-dataset`
-
-### 3. 创建 HuggingFace Space
+### 2. 创建 HuggingFace Space
 
 1. 访问 [New Space](https://huggingface.co/new-space)
 2. **选择 Docker** 作为 SDK
 3. **选择 Static** 作为 Space 配置
 4. 设置 Space 名称（用于 `HF_SPACE_DOMAIN`）
 
-### 4. 配置环境变量
+### 3. 配置环境变量
 
-在 Space 的 **Settings > Variables and secrets** 中添加以下环境变量：
+在 Space 的 **Settings > Variables and secrets** 中添加环境变量：
 
-#### 必需变量
+#### 必需变量（根据使用方案选择）
+
+**方案一：ModelScope（推荐）**
 
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
-| `HF_TOKEN` | HuggingFace Token | `hf_xxxxxxxxxxxx` |
-| `HF_DATASET` | 备份数据集 ID | `your-username/your-dataset` |
-| `HF_SPACE_DOMAIN` | HuggingFace Space 名称 | `ceshi001awdhg-ceshi-claw` |
+| `HF_TOKEN` | HuggingFace Token（需 Write 权限） | `hf_xxxxxxxxxxxx` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称 | `my-openclaw` |
+| `MODELSCOPE_API_KEY` | ModelScope Token | 在 modelscope.cn 获取 |
+| `MODELSCOPE_MODEL` | ModelScope 模型 | `moonshotai/Kimi-K2.5` |
+| `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
+
+**方案二：自定义 API**
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `HF_TOKEN` | HuggingFace Token（需 Write 权限） | `hf_xxxxxxxxxxxx` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称 | `my-openclaw` |
 | `OPENAI_API_KEY` | 主 API Key | `sk-xxx` |
 | `OPENAI_API_BASE` | 主 API 地址 | `https://api.siliconflow.cn/v1` |
 | `MODEL` | 主模型 | `nvidia/nemotron-3-super-120b-a12b` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
 
-#### 可选变量
+#### 可选变量 - 数据同步
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `AUTO_CREATE_DATASET` | 自动创建私有 Dataset | `false` |
+| `OPENCLAW_DATASET_REPO` | 自定义 Dataset 名称 | `{Space名称}-data` |
+| `HF_DATASET` | 手动指定 Dataset ID（向后兼容） | - |
+| `SYNC_INTERVAL` | 备份间隔（秒） | `60`（1分钟） |
+
+#### 可选变量 - 模型配置
 
 | 变量名 | 说明 | 示例值 |
 |--------|------|--------|
-| `FALLBACK_MODEL` | 备用模型（逗号分隔） | `moonshotai/kimi-k2.5,qwen/qwen3.5-397b-a17b` |
+| `FALLBACK_MODEL` | 备用模型（逗号分隔多个） | `moonshotai/kimi-k2.5,qwen/qwen3.5` |
 | `FALLBACK_OPENAI_API_KEY` | 备用模型 API Key | `sk-xxx` |
 | `FALLBACK_OPENAI_API_BASE` | 备用模型 API 地址 | `https://api2.com/v1` |
 | `VISION_MODEL` | 视觉模型 | `moonshotai/Kimi-K2.5` |
 | `VISION_API_BASE` | 视觉模型 API 地址 | `https://api-inference.modelscope.cn/v1` |
 | `VISION_API_KEY` | 视觉模型 API Key | `ms-xxx` |
-| `FEISHU_ENABLED` | 启用飞书频道 | `true` 或 `false` |
-| `FEISHU_APP_ID` | 飞书应用 ID | `cli_xxxxxxxxxxxxxxxx` |
-| `FEISHU_APP_SECRET` | 飞书应用密钥 | `xxxxxxxxxxxxxxxx` |
+
+#### 可选变量 - 飞书配置
+
+> ⚠️ 注意：飞书插件已集成到镜像中，配置即可使用。
+
+| 变量名 | 说明 |
+|--------|------|
+| `FEISHU_ENABLED` | 启用飞书频道 (`true`/`false`) |
+| `FEISHU_APP_ID` | 飞书应用 ID |
+| `FEISHU_APP_SECRET` | 飞书应用密钥 |
+
+#### 可选变量 - 钉钉配置
+
+| 变量名 | 说明 |
+|--------|------|
+| `DINGTALK_ENABLED` | 启用钉钉 (`true`/`false`) |
+| `DINGTALK_CLIENT_ID` | 钉钉 Client ID |
+| `DINGTALK_CLIENT_SECRET` | 钉钉 Client Secret |
+| `DINGTALK_ROBOT_CODE` | 钉钉机器人 Code |
+| `DINGTALK_CORP_ID` | 钉钉企业 ID |
+
+#### 可选变量 - 网络
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `DOH_ENABLED` | 启用 DNS-over-HTTPS（解决 DNS 屏蔽问题） | `true` |
 
 ---
 
@@ -150,20 +218,17 @@
    docker build -t openclaw-hf .
    ```
 
-3. 运行容器
+3. 运行容器（最简配置）
    ```bash
    docker run -d --name openclaw \
      -p 7860:7860 \
      -e HF_TOKEN=hf_xxxx \
-     -e HF_DATASET=your/dataset \
+     -e AUTO_CREATE_DATASET=true \
      -e HF_SPACE_DOMAIN=ceshi001awdhg-ceshi-claw \
      -e OPENAI_API_KEY=sk-xxx \
      -e OPENAI_API_BASE=https://api.example.com/v1 \
      -e MODEL=model-name \
      -e OPENCLAW_GATEWAY_PASSWORD=admin123 \
-     -e FEISHU_ENABLED=true \
-     -e FEISHU_APP_ID=xxx \
-     -e FEISHU_APP_SECRET=xxx \
      openclaw-hf
    ```
 
@@ -180,25 +245,15 @@
 
 ---
 
-## 飞书使用
-
-1. 在飞书中搜索机器人
-2. 发送消息开始对话
-3. 首次使用需要配对（pairing）
-
----
-
 ## 数据同步
 
 ### 自动备份
 
-每 20 分钟自动备份到 HuggingFace Dataset。
+- 默认每 20 分钟自动备份到 HuggingFace Dataset（可通过 `SYNC_INTERVAL` 配置）
+- 自动恢复最近 5 天的备份数据
+- 自动清理超过 30 天的旧备份
 
-### 手动恢复
-
-重启容器时自动从 Dataset 恢复数据。
-
-### 手动备份/恢复
+### 手动命令
 
 ```bash
 # 进入容器
@@ -209,6 +264,9 @@ python3 /usr/local/bin/sync.py backup
 
 # 手动恢复
 python3 /usr/local/bin/sync.py restore
+
+# 手动清理旧备份
+python3 /usr/local/bin/sync.py cleanup
 ```
 
 ---
@@ -218,7 +276,7 @@ python3 /usr/local/bin/sync.py restore
 ### 构建失败
 
 - 检查 Dockerfile 语法
-- 确保 `sync.py` 文件已上传
+- 确保 `sync.py` 和 `start-openclaw.sh` 文件已上传
 
 ### 网关无法访问
 
@@ -238,6 +296,11 @@ python3 /usr/local/bin/sync.py restore
 - 检查 App ID/Secret 是否正确
 - 确认事件订阅配置
 
+### 钉钉无法连接
+
+- 检查 Client ID/Secret 是否正确
+- 确认机器人配置
+
 ### ❌ 模型不支持图像错误
 
 **问题**：日志显示 `Model does not support images`
@@ -246,9 +309,17 @@ python3 /usr/local/bin/sync.py restore
 
 **解决方案**：确保 `VISION_MODEL` 和 `VISION_API_BASE` 正确配置
 
+### DNS 解析失败
+
+**问题**：某些域名（如 Telegram）无法访问
+
+**解决方案**：确保 `DOH_ENABLED=true`（默认启用）
+
 ---
 
 ## 参考资料
 
 - [OpenClaw 官方文档](https://docs.openclaw.ai/)
 - [飞书开放平台](https://open.feishu.cn/)
+- [钉钉开放平台](https://open.dingtalk.com/)
+- [HuggingFace Spaces](https://huggingface.co/spaces)
