@@ -187,6 +187,8 @@ else
         if [ -n "$MODELSCOPE_API_KEY" ]; then
             VISION_API_BASE="$MODELSCOPE_API_BASE"
             VISION_API_KEY="$MODELSCOPE_API_KEY"
+            # 确保视觉模型名称使用 ModelScope 格式
+            VISION_MODEL="$VISION_MODEL"
         else
             # 使用主模型的 API 配置
             VISION_API_BASE="$PRIMARY_API_BASE"
@@ -194,7 +196,7 @@ else
         fi
     else
         # 单独配置了视觉模型 API
-        VISION_API_BASE=$(echo "$VISION_API_BASE" | sed "s|/chat/completions||g" | sed "s|/v1/|/v1|g" | sed "s|/v1$||g")
+        VISION_API_BASE=$(echo "$VISION_API_BASE" | sed 's|/chat/completions$||')
     fi
     
     # 视觉模型使用独立的 API（与主模型不同的 API 地址或 Key）
@@ -208,6 +210,11 @@ fi
 
 # 从视觉 API URL 提取 Provider 名称
 VISION_PROVIDER=$(echo "$VISION_API_BASE" | sed 's|^https://||' | sed 's|/.*$||')
+
+# 如果是 ModelScope API，使用 modelscope provider
+if [ "$VISION_PROVIDER" = "api-inference.modelscope.cn" ]; then
+    VISION_PROVIDER="modelscope"
+fi
 
 [ -n "$FALLBACK_MODES" ] && echo "--- [INIT] 备用模型: $FALLBACK_MODES"
 [ -n "$VISION_MODEL" ] && echo "--- [INIT] 视觉模型: $VISION_MODEL (Provider: $VISION_PROVIDER)"
@@ -307,6 +314,11 @@ if [ -n "$VISION_MODEL" ] && [ "$VISION_USE_SEPARATE" = true ]; then
     AGENTS_CONFIG="$AGENTS_CONFIG, \"imageModel\": {"
     AGENTS_CONFIG="$AGENTS_CONFIG \"primary\": \"$VISION_PROVIDER/$VISION_MODEL\""
     AGENTS_CONFIG="$AGENTS_CONFIG }"
+elif [ -n "$VISION_MODEL" ] && [ "$VISION_USE_SEPARATE" = false ]; then
+    # 如果视觉模型使用相同 API，添加到主模型列表（已在 PROVIDERS_JSON 中处理）
+    AGENTS_CONFIG="$AGENTS_CONFIG, \"imageModel\": {"
+    AGENTS_CONFIG="$AGENTS_CONFIG \"primary\": \"$PRIMARY_PROVIDER/$VISION_MODEL\""
+    AGENTS_CONFIG="$AGENTS_CONFIG }"
 fi
 
 # 关闭 defaults 对象
@@ -370,12 +382,16 @@ cat > /root/.openclaw/openclaw.json <<EOF
         "feishu": ["*"],
         "dingtalk": ["*"]
       }
+    },
+    "exec": {
+      "security": "full",
+      "ask": "off"
     }
   }
 }
 EOF
 
-echo "--- [INIT] 配置完成 (已启用 bash、config 命令和 elevated 工具) ---"
+echo "--- [INIT] 配置完成 (已启用 bash、config 命令和 elevated 工具，已设置 exec 安全策略) ---"
 cat /root/.openclaw/openclaw.json | head -30
 
 # 注意：初始全量备份将在 backup_daemon 启动 20 分钟后自动执行
@@ -434,6 +450,10 @@ cat > /root/.openclaw/openclaw.json <<EOF
         "feishu": ["*"],
         "dingtalk": ["*"]
       }
+    },
+    "exec": {
+      "security": "full",
+      "ask": "off"
     }
   }
 }
