@@ -9,48 +9,41 @@ BACKUP_PID_FILE="/tmp/sync_backup.pid"
 # 日志文件路径会在运行时根据 OPENCLAW_HOME 动态设置
 
 # ============================================================
-# DNS-over-HTTPS 配置（解决 HF Spaces DNS 屏蔽问题）
+# DNS 配置（解决 HF Spaces DNS 屏蔽问题）
 # ============================================================
-setup_dns_over_https() {
-    echo "--- [DNS] 配置 DNS-over-HTTPS ---"
+setup_dns() {
+    echo "--- [DNS] 配置 DNS ---"
     
     # 检查是否启用（默认启用）
     if [ "${DOH_ENABLED:-true}" != "true" ]; then
-        echo "--- [DNS] DNS-over-HTTPS 已禁用 ---"
+        echo "--- [DNS] DNS 配置已禁用 ---"
         return
     fi
     
-    # 安装 dnscrypt-proxy（如果可用）
-    if command -v dnscrypt-proxy &> /dev/null; then
-        echo "--- [DNS] 使用 dnscrypt-proxy ---"
-        # dnscrypt-proxy 会自动配置
-        return
-    fi
+    # 配置 Google DNS (8.8.8.8, 8.8.4.4)
+    # 优先使用 /etc/resolv.conf，如果没有权限则创建新的 resolv.conf
+    local dns_added=0
     
-    # 备用方案：配置 /etc/hosts 解决常见被屏蔽域名
-    # 这些 IP 可能会变化，建议定期更新
-    local hosts_entries=(
-        # Telegram API（常见备用 IP）
-        "149.154.167.220 api.telegram.org"
-        "149.154.167.250 api.telegram.org"
-    )
-    
-    local added=0
-    for entry in "${hosts_entries[@]}"; do
-        local ip=$(echo "$entry" | awk '{print $1}')
-        local domain=$(echo "$entry" | awk '{print $2}')
-        
-        # 检查是否已存在
-        if ! grep -q "$domain" /etc/hosts 2>/dev/null; then
-            echo "$entry" >> /etc/hosts
-            added=$((added + 1))
+    # 检查是否已经有 Google DNS
+    if ! grep -q "8.8.8.8" /etc/resolv.conf 2>/dev/null; then
+        # 尝试备份并修改 resolv.conf
+        if [ -w /etc/resolv.conf ] 2>/dev/null; then
+            # 添加 Google DNS 到开头
+            echo "nameserver 8.8.8.8" > /etc/resolv.conf
+            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+            dns_added=1
+        elif [ -w /etc ]; then
+            # 创建新的 resolv.conf
+            echo "nameserver 8.8.8.8" > /etc/resolv.conf
+            echo "nameserver 8.8.4.4" >> /etc/resolv.conf
+            dns_added=1
         fi
-    done
+    fi
     
-    if [ $added -gt 0 ]; then
-        echo "--- [DNS] 已添加 $added 条 hosts 记录 ---"
+    if [ $dns_added -eq 1 ]; then
+        echo "--- [DNS] 已配置 Google DNS (8.8.8.8, 8.8.4.4) ---"
     else
-        echo "--- [DNS] hosts 记录已存在，跳过 ---"
+        echo "--- [DNS] DNS 已配置，跳过 ---"
     fi
 }
 
@@ -104,8 +97,8 @@ echo "=========================================="
 echo "OpenClaw Gateway 启动中..."
 echo "=========================================="
 
-# 配置 DNS-over-HTTPS
-setup_dns_over_https
+# 配置 DNS（Google DNS 8.8.8.8, 8.8.4.4）
+setup_dns
 
 # 存储路径：优先使用 /data（HF Spaces 持久存储），否则使用 /root
 if mkdir -p /data/.openclaw 2>/dev/null; then
@@ -146,13 +139,16 @@ fi
 CONFIG_FILE="${OPENCLAW_HOME}/.openclaw/openclaw.json"
 
 # ==================== 模型配置 ====================
-# 优先使用 ModelScope（如果设置了 MODELSCOPE_API_KEY）
-# 否则使用传统的 OPENAI_API_KEY 配置
+# 优先级：ModelScope > HuggingFace 免费模型 > 自定义 API
 
 # ModelScope 配置
 MODELSCOPE_API_KEY="${MODELSCOPE_API_KEY:-}"
 MODELSCOPE_MODEL="${MODELSCOPE_MODEL:-moonshotai/Kimi-K2.5}"
 MODELSCOPE_API_BASE="https://api-inference.modelscope.cn/v1"
+
+# HuggingFace 免费模型配置
+HF_TOKEN="${HF_TOKEN:-}"
+HF_API_BASE="https://api-inference.huggingface.co"
 
 # 备用模型配置（先设置默认值）
 FALLBACK_MODES="${FALLBACK_MODEL:-}"
@@ -161,9 +157,10 @@ FALLBACK_OPENAI_API_KEY="${FALLBACK_OPENAI_API_KEY:-}"
 OPENAI_API_BASE="${OPENAI_API_BASE:-}"
 OPENAI_API_KEY="${OPENAI_API_KEY:-}"
 
+# 判断使用哪个模型
 if [ -n "$MODELSCOPE_API_KEY" ]; then
-    # 使用 ModelScope 作为主模型
-    echo "--- [INIT] 使用 ModelScope 作为默认模型 ---"
+    # 方案1: 使用 ModelScope
+    echo "--- [INIT] 使用 ModelScope 作为主模型 ---"
     PRIMARY_API_BASE="$MODELSCOPE_API_BASE"
     PRIMARY_API_KEY="$MODELSCOPE_API_KEY"
     PRIMARY_MODEL="$MODELSCOPE_MODEL"
@@ -178,8 +175,21 @@ if [ -n "$MODELSCOPE_API_KEY" ]; then
         FALLBACK_API_BASE=$(echo "$FALLBACK_OPENAI_API_BASE" | sed "s|/chat/completions||g" | sed "s|/v1/|/v1|g" | sed "s|/v1$||g")
         FALLBACK_API_KEY="$FALLBACK_OPENAI_API_KEY"
     fi
-else
-    # 使用传统 OpenAI 兼容 API 配置
+elif [ -n "$HF_TOKEN" ] && [ -z "$OPENAI_API_KEY" ] && [ -z "$MODELSCOPE_API_KEY" ]; then
+    # 方案2: 使用 HuggingFace 免费模型（只有 HF_TOKEN，没有自定义 API）
+    echo "--- [INIT] 使用 HuggingFace 免费模型 ---"
+    PRIMARY_API_BASE="$HF_API_BASE"
+    PRIMARY_API_KEY="$HF_TOKEN"
+    # 使用默认免费模型（DeepSeek-R1 是热门免费模型）
+    PRIMARY_MODEL="${OPENCLAW_DEFAULT_MODEL:-huggingface/deepseek-ai/DeepSeek-R1}"
+    PRIMARY_PROVIDER="huggingface"
+    echo "--- [INIT] 主模型: $PRIMARY_MODEL (Provider: $PRIMARY_PROVIDER, API: $PRIMARY_API_BASE)"
+    
+    # HuggingFace 不需要备用模型
+    FALLBACK_API_BASE=""
+    FALLBACK_API_KEY=""
+elif [ -n "$OPENAI_API_KEY" ]; then
+    # 方案3: 使用自定义 OpenAI 兼容 API
     echo "--- [INIT] 使用自定义 API 作为主模型 ---"
     # 只去掉 /chat/completions 后缀，保留完整的 /v1 路径
     PRIMARY_API_BASE=$(echo "${OPENAI_API_BASE:-}" | sed 's|/chat/completions$||')
@@ -191,7 +201,15 @@ else
     # 只去掉 /chat/completions 后缀，保留完整的 /v1 路径
     FALLBACK_API_BASE=$(echo "${FALLBACK_OPENAI_API_BASE:-$OPENAI_API_BASE}" | sed 's|/chat/completions$||')
     FALLBACK_API_KEY="${FALLBACK_OPENAI_API_KEY:-$OPENAI_API_KEY}"
+else
+    # 没有配置任何 API，报错
+    echo "ERROR: 请配置至少一种模型 API"
+    echo "  - ModelScope: 设置 MODELSCOPE_API_KEY"
+    echo "  - HuggingFace: 设置 HF_TOKEN"
+    echo "  - 自定义 API: 设置 OPENAI_API_KEY 和 OPENAI_API_BASE"
+    exit 1
 fi
+
 if [ "$FALLBACK_API_BASE" != "$PRIMARY_API_BASE" ] || [ "$FALLBACK_API_KEY" != "$PRIMARY_API_KEY" ]; then
     FALLBACK_USE_SEPARATE=true
 fi
@@ -486,5 +504,40 @@ cat > "${CONFIG_FILE}" <<EOF
 }
 EOF
 echo "--- [INIT] 重新写入配置完成 ---"
+
+# ============================================================
+# 传递完整环境变量给 OpenClaw
+# ============================================================
+echo "--- [INIT] 传递完整环境变量给 OpenClaw ---"
+
+# 导出所有环境变量，确保 OpenClaw 可以访问所有配置
+# 包括：HF_TOKEN, OPENAI_API_KEY, ANTHROPIC_API_KEY, GOOGLE_API_KEY 等
+export HF_TOKEN
+export OPENAI_API_KEY
+export OPENAI_API_BASE
+export ANTHROPIC_API_KEY
+export GOOGLE_API_KEY
+export MODELSCOPE_API_KEY
+export OPENROUTER_API_KEY
+export OLLAMA_HOST
+export OLLAMA_NUM_PARALLEL
+export OLLAMA_KEEP_ALIVE
+export OPENCLAW_MEMORY_BACKEND
+export OPENCLAW_REDIS_URL
+export OPENCLAW_SQLITE_PATH
+export OPENCLAW_HTTP_PROXY
+export OPENCLAW_HTTPS_PROXY
+export OPENCLAW_NO_PROXY
+
+# 打印环境变量状态（不打印敏感值）
+echo "--- [INIT] 环境变量状态: ---"
+echo "  - HF_TOKEN: ${HF_TOKEN:+已设置}"
+echo "  - OPENAI_API_KEY: ${OPENAI_API_KEY:+已设置}"
+echo "  - MODELSCOPE_API_KEY: ${MODELSCOPE_API_KEY:+已设置}"
+echo "  - OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:+已设置}"
+echo "  - ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:+已设置}"
+echo "  - GOOGLE_API_KEY: ${GOOGLE_API_KEY:+已设置}"
+
+echo "--- [INIT] 启动 OpenClaw Gateway ---"
 
 exec node openclaw.mjs gateway --allow-unconfigured

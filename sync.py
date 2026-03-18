@@ -416,12 +416,12 @@ class DataSync:
                 print(f"--- [SYNC] 已清理临时文件: {temp_file} ---")
 
     def cleanup_old_backups(self):
-        """清理超过保留天数的旧备份"""
+        """清理旧备份，保持数据集精简"""
         try:
             if not self.repo_id or not self.token:
                 return False
 
-            print(f"--- [SYNC] 开始清理超过 {BACKUP_RETENTION_DAYS} 天的旧备份 ---")
+            print(f"--- [SYNC] 开始清理旧备份 ---")
 
             files = self.api.list_repo_files(
                 repo_id=self.repo_id,
@@ -429,47 +429,95 @@ class DataSync:
                 token=self.token
             )
 
-            cutoff_date = datetime.now() - timedelta(days=BACKUP_RETENTION_DAYS)
-            deleted_count = 0
-
+            # 分离全量备份和差异备份
+            full_backups = []  # backup_YYYY-MM-DD.tar.gz
+            incremental_backups = []  # incremental_YYYY-MM-DD_HHMMSS.tar.gz
+            
             for file in files:
                 if file.startswith("backup_") and file.endswith(".tar.gz"):
-                    try:
-                        # 从文件名提取日期: backup_YYYY-MM-DD.tar.gz
-                        date_str = file.replace("backup_", "").replace(".tar.gz", "")
-                        file_date = datetime.strptime(date_str, "%Y-%m-%d")
+                    full_backups.append(file)
+                elif file.startswith("incremental_"):
+                    incremental_backups.append(file)
 
-                        if file_date < cutoff_date:
-                            print(f"--- [SYNC] 删除旧全量备份: {file} ---")
-                            self.api.delete_file(
-                                path_in_repo=file,
-                                repo_id=self.repo_id,
-                                repo_type="dataset",
-                                token=self.token
-                            )
+            deleted_count = 0
+
+            # 1. 清理超过30天的全量备份
+            cutoff_date = datetime.now() - timedelta(days=BACKUP_RETENTION_DAYS)
+            for file in full_backups:
+                try:
+                    date_str = file.replace("backup_", "").replace(".tar.gz", "")
+                    file_date = datetime.strptime(date_str, "%Y-%m-%d")
+                    if file_date < cutoff_date:
+                        print(f"--- [SYNC] 删除过期全量备份: {file} ---")
+                        self.api.delete_file(path_in_repo=file, repo_id=self.repo_id, repo_type="dataset", token=self.token)
+                        deleted_count += 1
+                except ValueError:
+                    continue
+
+            # 2. 每天只保留一个全量备份（保留最新的）
+            full_backups_by_day = {}
+            for file in full_backups:
+                try:
+                    date_str = file.replace("backup_", "").replace(".tar.gz", "")
+                    day = date_str[:10]  # YYYY-MM-DD
+                    if day not in full_backups_by_day:
+                        full_backups_by_day[day] = []
+                    full_backups_by_day[day].append(file)
+                except:
+                    continue
+            
+            for day, backups in full_backups_by_day.items():
+                if len(backups) > 1:
+                    # 按日期排序，保留最新的
+                    backups_sorted = sorted(backups)
+                    for old_backup in backups_sorted[:-1]:
+                        print(f"--- [SYNC] 删除同一天多余全量备份: {old_backup} ---")
+                        try:
+                            self.api.delete_file(path_in_repo=old_backup, repo_id=self.repo_id, repo_type="dataset", token=self.token)
                             deleted_count += 1
-                    except ValueError:
-                        # 文件名格式不正确，跳过
+                        except:
+                            continue
+
+            # 3. 每天只保留3个最新的差异备份
+            # 按日期分组
+            inc_backups_by_day = {}
+            for file in incremental_backups:
+                try:
+                    # 格式: incremental_YYYY-MM-DD_HHMMSS.tar.gz
+                    date_part = file.replace("incremental_", "").replace(".tar.gz", "").split("_")[0]
+                    if date_part not in inc_backups_by_day:
+                        inc_backups_by_day[date_part] = []
+                    inc_backups_by_day[date_part].append(file)
+                except:
+                    continue
+            
+            # 清理超过7天的差异备份
+            cutoff_inc = datetime.now() - timedelta(days=7)
+            for day, backups in inc_backups_by_day.items():
+                try:
+                    day_date = datetime.strptime(day, "%Y-%m-%d")
+                    if day_date < cutoff_inc:
+                        for old_file in backups:
+                            print(f"--- [SYNC] 删除过期差异备份: {old_file} ---")
+                            try:
+                                self.api.delete_file(path_in_repo=old_file, repo_id=self.repo_id, repo_type="dataset", token=self.token)
+                                deleted_count += 1
+                            except:
+                                continue
                         continue
+                except:
+                    continue
                 
-                # 清理旧的差异备份（保留最近2天的）
-                if file.startswith("incremental_"):
-                    try:
-                        # 格式: incremental_YYYY-MM-DD_HHMMSS.tar.gz
-                        date_part = file.replace("incremental_", "").replace(".tar.gz", "").split("_")[0]
-                        file_date = datetime.strptime(date_part, "%Y-%m-%d")
-                        
-                        if file_date < cutoff_date:
-                            print(f"--- [SYNC] 删除旧差异备份: {file} ---")
-                            self.api.delete_file(
-                                path_in_repo=file,
-                                repo_id=self.repo_id,
-                                repo_type="dataset",
-                                token=self.token
-                            )
+                # 每天只保留3个最新的差异备份
+                if len(backups) > 3:
+                    backups_sorted = sorted(backups)
+                    for old_file in backups_sorted[:-3]:
+                        print(f"--- [SYNC] 删除同一天多余差异备份: {old_file} ---")
+                        try:
+                            self.api.delete_file(path_in_repo=old_file, repo_id=self.repo_id, repo_type="dataset", token=self.token)
                             deleted_count += 1
-                    except Exception:
-                        continue
+                        except:
+                            continue
 
             if deleted_count > 0:
                 print(f"--- [SYNC] 已清理 {deleted_count} 个旧备份文件 ---")
