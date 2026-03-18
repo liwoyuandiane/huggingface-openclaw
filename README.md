@@ -77,6 +77,17 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 | `MODEL` | 主模型 | `nvidia/nemotron-3-super-120b-a12b` |
 | `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
 
+#### 方案三：OpenRouter（推荐 - 200+ 模型）
+
+OpenRouter 提供 200+ 模型，支持免费 tier：
+
+| 变量名 | 说明 | 示例值 |
+|--------|------|--------|
+| `HF_TOKEN` | HuggingFace Token（需 Write 权限） | `hf_xxxxxxxxxxxx` |
+| `HF_SPACE_DOMAIN` | HuggingFace Space 名称 | `my-openclaw` |
+| `OPENROUTER_API_KEY` | OpenRouter API Key | 在 openrouter.ai 获取 |
+| `OPENCLAW_GATEWAY_PASSWORD` | 网关登录密码 | `your_password` |
+
 #### 可选变量 - 数据同步
 
 | 变量名 | 说明 | 默认值 |
@@ -93,9 +104,9 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 | `FALLBACK_MODEL` | 备用模型（逗号分隔多个） | `moonshotai/kimi-k2.5,qwen/qwen3.5` |
 | `FALLBACK_OPENAI_API_KEY` | 备用模型 API Key | `sk-xxx` |
 | `FALLBACK_OPENAI_API_BASE` | 备用模型 API 地址 | `https://api2.com/v1` |
-| `VISION_MODEL` | 视觉模型 | `moonshotai/Kimi-K2.5` |
-| `VISION_API_BASE` | 视觉模型 API 地址 | `https://api-inference.modelscope.cn/v1` |
-| `VISION_API_KEY` | 视觉模型 API Key | `ms-xxx` |
+| `VISION_MODEL` | 视觉模型 | `qwen3-vl-plus` |
+| `VISION_API_BASE` | 视觉模型 API 地址 | `https://apis.iflow.cn/v1` |
+| `VISION_API_KEY` | 视觉模型 API Key | `sk-xxx` |
 
 #### 可选变量 - 飞书配置
 
@@ -122,6 +133,12 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 | 变量名 | 说明 | 默认值 |
 |--------|------|--------|
 | `DOH_ENABLED` | 启用 DNS-over-HTTPS（解决 DNS 屏蔽问题） | `true` |
+
+#### 可选变量 - 数据存储
+
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| `OPENCLAW_DATA_DIR` | OpenClaw 数据目录 | `/root/.openclaw`（HF Spaces 优先使用 `/data/.openclaw`） |
 
 ---
 
@@ -250,8 +267,22 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 ### 自动备份
 
 - 默认每 **1 分钟**自动备份到 HuggingFace Dataset（可通过 `SYNC_INTERVAL` 配置，首次备份延迟 10 分钟）
+- 支持**全量备份**和**差异备份**：
+  - 全量备份：每 7 天自动执行一次
+  - 差异备份：平时只备份变化的文件，减少上传时间和存储空间
 - 自动恢复最近 5 天的备份数据
 - 自动清理超过 30 天的旧备份
+
+### 备份文件类型
+
+```
+# 全量备份（7天一次）
+backup_2026-03-18.tar.gz
+
+# 差异备份（平时）
+incremental_2026-03-18_143022.tar.gz
+incremental_2026-03-18_144022.tar.gz
+```
 
 ### 手动命令
 
@@ -259,10 +290,10 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 # 进入容器
 docker exec -it <container> bash
 
-# 手动备份
+# 手动备份（自动判断全量或差异）
 python3 /usr/local/bin/sync.py backup
 
-# 手动恢复
+# 手动恢复（自动选择最新备份）
 python3 /usr/local/bin/sync.py restore
 
 # 手动清理旧备份

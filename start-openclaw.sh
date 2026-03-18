@@ -6,7 +6,7 @@ set -e
 # ============================================================
 SYNC_INTERVAL="${SYNC_INTERVAL:-60}"   # 备份间隔（秒），默认 1 分钟
 BACKUP_PID_FILE="/tmp/sync_backup.pid"
-LOG_FILE="/root/.openclaw/sync.log"
+# 日志文件路径会在运行时根据 OPENCLAW_HOME 动态设置
 
 # ============================================================
 # DNS-over-HTTPS 配置（解决 HF Spaces DNS 屏蔽问题）
@@ -77,17 +77,22 @@ trap cleanup SIGTERM SIGINT SIGQUIT
 # 备份守护函数
 # ============================================================
 backup_daemon() {
+    # 动态设置日志路径
+    local log_file="${OPENCLAW_HOME:-/root}/.openclaw/sync.log"
+    local data_dir="${OPENCLAW_HOME:-/root}/.openclaw"
     local count=0
+    
     # 第一次备份等待 10 分钟，让 Gateway 完全启动并稳定运行
     local first_delay=600
-    echo "--- [BACKUP] 首次备份将在 ${first_delay} 秒(10分钟)后执行 ---" | tee -a "$LOG_FILE"
+    echo "--- [BACKUP] 首次备份将在 ${first_delay} 秒(10分钟)后执行 ---" | tee -a "$log_file"
     sleep $first_delay
     
     while true; do
         count=$((count + 1))
-        echo "--- [BACKUP] 第 $count 次定时备份开始 ($(date '+%Y-%m-%d %H:%M:%S')) ---" | tee -a "$LOG_FILE"
-        python3 /usr/local/bin/sync.py backup 2>&1 | tee -a "$LOG_FILE"
-        echo "--- [BACKUP] 第 $count 次定时备份完成 ---" | tee -a "$LOG_FILE"
+        echo "--- [BACKUP] 第 $count 次定时备份开始 ($(date '+%Y-%m-%d %H:%M:%S')) ---" | tee -a "$log_file"
+        # 设置环境变量让 sync.py 知道数据目录
+        OPENCLAW_DATA_DIR="$data_dir" python3 /usr/local/bin/sync.py backup 2>&1 | tee -a "$log_file"
+        echo "--- [BACKUP] 第 $count 次定时备份完成 ---" | tee -a "$log_file"
         sleep $SYNC_INTERVAL
     done
 }
@@ -102,13 +107,29 @@ echo "=========================================="
 # 配置 DNS-over-HTTPS
 setup_dns_over_https
 
-mkdir -p /root/.openclaw/sessions
-mkdir -p /root/.openclaw/workspace
+# 存储路径：优先使用 /data（HF Spaces 持久存储），否则使用 /root
+if mkdir -p /data/.openclaw 2>/dev/null; then
+    OPENCLAW_HOME="/data"
+    echo "--- [INIT] 使用持久存储: /data ---"
+else
+    OPENCLAW_HOME="/root"
+    echo "--- [INIT] 使用默认存储: /root ---"
+fi
+
+mkdir -p ${OPENCLAW_HOME}/.openclaw/sessions
+mkdir -p ${OPENCLAW_HOME}/.openclaw/workspace
+
+# 设置 OPENCLAW_HOME 环境变量
+export OPENCLAW_HOME
+
+# 修改数据目录常量为动态路径
+OPENCLAW_DATA_DIR="${OPENCLAW_HOME}/.openclaw"
+SYNC_LOG_FILE="${OPENCLAW_HOME}/.openclaw/sync.log"
 
 echo "--- [INIT] 检查 HuggingFace 数据恢复 ---"
 python3 /usr/local/bin/sync.py restore
 
-if [ ! -f /root/.openclaw/openclaw.json ]; then
+if [ ! -f "${CONFIG_FILE}" ]; then
     echo "--- [INIT] 无历史数据，需要初始备份 ---"
     NEED_INITIAL_UPLOAD=true
 fi
@@ -120,6 +141,9 @@ if [ -z "$HF_SPACE_DOMAIN" ]; then
     echo "ERROR: HF_SPACE_DOMAIN environment variable is required!"
     exit 1
 fi
+
+# 使用动态路径
+CONFIG_FILE="${OPENCLAW_HOME}/.openclaw/openclaw.json"
 
 # ==================== 模型配置 ====================
 # 优先使用 ModelScope（如果设置了 MODELSCOPE_API_KEY）
@@ -281,6 +305,9 @@ DINGTALK_CLIENT_SECRET="${DINGTALK_CLIENT_SECRET:-}"
 DINGTALK_ROBOT_CODE="${DINGTALK_ROBOT_CODE:-}"
 DINGTALK_CORP_ID="${DINGTALK_CORP_ID:-}"
 
+# OpenRouter 支持（兼容 HuggingClaw）
+OPENROUTER_API_KEY="${OPENROUTER_API_KEY:-}"
+
 # 首先构建 fallbacks 数组
 FALLBACK_MODELS_JSON=""
 if [ -n "$FALLBACK_MODES" ]; then
@@ -345,7 +372,7 @@ if [ "$DINGTALK_ENABLED" = "true" ]; then
     }"
 fi
 
-cat > /root/.openclaw/openclaw.json <<EOF
+cat > "${CONFIG_FILE}" <<EOF
 {
   "models": {
     "providers": {
@@ -392,7 +419,7 @@ cat > /root/.openclaw/openclaw.json <<EOF
 EOF
 
 echo "--- [INIT] 配置完成 (已启用 bash、config 命令和 elevated 工具，已设置 exec 安全策略) ---"
-cat /root/.openclaw/openclaw.json | head -30
+cat "${CONFIG_FILE}" | head -30
 
 # 注意：初始全量备份将在 backup_daemon 启动 20 分钟后自动执行
 
@@ -413,7 +440,7 @@ openclaw doctor --fix
 openclaw config set gateway.controlUi.allowedOrigins '["https://*.hf.space", "https://*.huggingface.co", "http://localhost:*", "http://127.0.0.1:*", "https://${HF_SPACE_DOMAIN}.hf.space"]'
 
 # 重新写入配置文件作为备份
-cat > /root/.openclaw/openclaw.json <<EOF
+cat > "${CONFIG_FILE}" <<EOF
 {
   "models": {
     "providers": {
