@@ -20,6 +20,12 @@ logs/
 *.swp
 *.swo
 
+# iFlow CLI 配置
+.iflow/
+
+# 代码文档
+code-concise/
+
 # 系统文件
 .DS_Store
 Thumbs.db

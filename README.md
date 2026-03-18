@@ -249,7 +249,7 @@ OPENCLAW_GATEWAY_PASSWORD=admin123  # 网关密码
 
 ### 自动备份
 
-- 默认每 20 分钟自动备份到 HuggingFace Dataset（可通过 `SYNC_INTERVAL` 配置）
+- 默认每 **1 分钟**自动备份到 HuggingFace Dataset（可通过 `SYNC_INTERVAL` 配置，首次备份延迟 10 分钟）
 - 自动恢复最近 5 天的备份数据
 - 自动清理超过 30 天的旧备份
 
@@ -372,6 +372,38 @@ python3 /usr/local/bin/sync.py cleanup
 **原因**：视觉模型配置缺少 `input` 字段声明
 
 **解决方案**：确保 `VISION_MODEL` 和 `VISION_API_BASE` 正确配置
+
+### ❌ 定时任务跳过执行错误
+
+**问题**：定时任务显示 "已跳过 main job requires payload.kind="systemEvent""
+
+**原因**：定时任务配置为 `sessionTarget: "main"` 但 `payload.kind` 不是 "systemEvent"
+
+**解决方案**：
+1. 配置定时任务时，如果使用 `sessionTarget: "main"`，必须设置 `payload.kind: "systemEvent"`
+2. 或者，使用 `sessionTarget: "isolated"` 并设置 `payload.kind: "agentTurn"`
+
+示例配置：
+```json
+{
+  "sessionTarget": "main",
+  "payload": {
+    "kind": "systemEvent",
+    "text": "执行定时任务内容"
+  }
+}
+```
+
+或使用隔离会话：
+```json
+{
+  "sessionTarget": "isolated", 
+  "payload": {
+    "kind": "agentTurn",
+    "message": "执行定时任务内容"
+  }
+}
+```
 
 ### DNS 解析失败
 
